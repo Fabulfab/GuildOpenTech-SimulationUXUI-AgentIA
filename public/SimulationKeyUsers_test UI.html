@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simulation Key Users - Test UI</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    body { font-family: 'Cabin', sans-serif; background-color: #071520; color: #F6A316; padding: 20px;}
+    h1 { font-size: 1.7em; }
+    .form-section { background: #0D2D45; border-radius:12px; padding:18px; margin-bottom:18px;}
+    label { font-weight: 600; margin-bottom: 6px; display: block;}
+    select, input[type="file"], input[type="text"], textarea { width: 100%; margin-bottom: 10px; padding:8px; border-radius:5px; border:1px solid #F6A316; background:#071520; color: #F6A316;}
+    button { background: #F6A316; color: #071520; font-weight: bold; border:none; padding:8px 13px; border-radius:5px; margin-top:8px; cursor:pointer;}
+    .remove-btn { background:#F6A316; color:#071520; position:absolute; right:10px; top:10px; }
+    .question-zone { margin-top:18px; border:1px solid #F6A316; padding:18px; background:#071520; border-radius:8px; position:relative;}
+    .question-zone h4 { margin: 0 0 15px 0; color: #F6A316; font-size: 1.1em; }
+    .question-zone .remove-btn { background:#F6A316; color:#071520; position:absolute; right:15px; top:15px; padding: 5px 10px; font-size: 0.8em; }
+    .results { margin-top:22px; background:#0D2D45; color: #fff; border-radius:8px; padding:15px;}
+    .image-preview {max-width:100%; margin-bottom:12px;}
+  </style>
+</head>
+<body>
+<h1>Simulation Key Users - Test UI</h1>
+<div class="form-section">
+  <label for="personaDropdown">Sélectionnez le Key User (persona):</label>
+  <select id="personaDropdown">
+    <option value="P1_Spécialiste_UI">Spécialiste UI</option>
+    <option value="P2_Spécialiste_UX">Spécialiste UX</option>
+    <option value="P3_Développeur_junior_homme">Dév junior homme</option>
+    <option value="P4_Développeur_reconversion_expertise">Dév junior/senior/confirmé (reconversion, expertise)</option>
+    <option value="P5_Développeur_senior_homme">Dév senior homme</option>
+    <option value="P6_Développeur_confirmé_femme">Dév confirmé femme</option>
+    <option value="P7_Développeur_junior_femme_reconversion">Dév junior femme (reconversion, alternance)</option>
+    <option value="P8_Développeur_junior_homme_BTS">Dév junior homme (BTS sans alternance)</option>
+  </select>
+  <br>
+  <label for="apiProvider">Fournisseur d'IA :</label>
+  <select id="apiProvider" onchange="updateApiKeyPlaceholder()">
+    <option value="mistral">Mistral AI</option>
+    <option value="openai">OpenAI (GPT - Gratuit)</option>
+    <option value="gemini">Google Gemini (Gratuit)</option>
+    <option value="grok">Grok (xAI - Payant)</option>
+  </select>
+  <br>
+  <label for="apiKey" id="apiKeyLabel">Clé API Mistral :</label>
+  <input type="text" id="apiKey" placeholder="Insérez votre clé API Mistral ici" />
+  <br>
+  
+  <!-- Bouton pour ajouter la première question -->
+  <div style="margin: 20px 0; padding: 15px; background: #0D2D45; border-radius: 8px; border: 1px solid #F6A316;">
+    <button onclick="addQuestion()" style="background: #F6A316; color: #071520; padding: 12px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 1.1em;">
+      ➕ Commencer ma première question
+    </button>
+    <p style="margin: 10px 0 0 0; color: #F6A316; font-size: 0.9em;">
+      Cliquez ici pour créer votre première question et uploader une image UI à analyser
+    </p>
+  </div>
+  
+  <div id="questionsArea">
+    <!-- Questions/réponses dynamiques ici -->
+  </div>
+  <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px; padding: 15px; background: #0D2D45; border-radius: 8px;">
+    <button onclick="addQuestion()" style="background: #F6A316; color: #071520; padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
+      ➕ Ajouter une question
+    </button>
+    <button onclick="generateAllAIAnswers()" style="background: #F6A316; color: #071520; padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
+      🤖 Générer toutes les réponses IA
+    </button>
+    <button onclick="saveAllAnswers()" style="background: #0D2D45; color: #F6A316; border: 1px solid #F6A316; padding: 10px 15px; border-radius: 5px; cursor: pointer;">
+      💾 Sauvegarder toutes les réponses
+    </button>
+    <button onclick="exportResults()" style="background: #0D2D45; color: #F6A316; border: 1px solid #F6A316; padding: 10px 15px; border-radius: 5px; cursor: pointer;">
+      📊 Exporter Excel
+    </button>
+    <button onclick="viewSavedData()" style="background: #0D2D45; color: #F6A316; border: 1px solid #F6A316; padding: 10px 15px; border-radius: 5px; cursor: pointer;">
+      📋 Voir données sauvegardées
+    </button>
+  </div>
+  
+  <div class="results" id="resultsDisplay"></div>
+</div>
+<script>
+// Fonction pour mettre à jour le placeholder selon le fournisseur sélectionné
+function updateApiKeyPlaceholder() {
+  const provider = document.getElementById('apiProvider').value;
+  const apiKeyInput = document.getElementById('apiKey');
+  const apiKeyLabel = document.getElementById('apiKeyLabel');
+  
+  switch (provider) {
+    case 'openai':
+      apiKeyLabel.textContent = 'Clé API OpenAI :';
+      apiKeyInput.placeholder = 'Insérez votre clé API OpenAI (sk-...) ici';
+      break;
+    case 'gemini':
+      apiKeyLabel.textContent = 'Clé API Google Gemini :';
+      apiKeyInput.placeholder = 'Insérez votre clé API Gemini ici';
+      break;
+    case 'grok':
+      apiKeyLabel.textContent = 'Clé API Grok (xAI) :';
+      apiKeyInput.placeholder = 'Insérez votre clé API Grok (xai-...) ici';
+      break;
+    default: // mistral
+      apiKeyLabel.textContent = 'Clé API Mistral :';
+      apiKeyInput.placeholder = 'Insérez votre clé API Mistral ici';
+  }
+}
+
+const personas = {
+  "P1_Spécialiste_UI": {
+    desc: "Spécialiste UI, cherche plusieurs sites références UI avant de répondre. Sources : Dribbble, Behance, Awwwards, Mobbin.",
+    instructions: "Analyse l'UI en te basant sur Dribbble, Behance, Awwwards, Mobbin et cite tes sources."
+  },
+  "P2_Spécialiste_UX": {
+    desc: "Spécialiste UX, se réfère au Baymard Institute, complète par d'autres références UX. Sources : Baymard Institute, UX Collective, Awwwards.",
+    instructions: "Analyse l'expérience utilisateur selon le Baymard Institute et complète par d'autres sites UX reconnus. Cite tes sources."
+  },
+  "P3_Développeur_junior_homme": {
+    desc: "Développeur junior, homme, <2 ans XP, master/bts, sans alternance, bénévole.",
+    instructions: "Donne ton ressenti de développeur junior sur l'UI, sans expertise forte, en te basant sur ce que tu as appris en BTS/master. Reste synthétique."
+  },
+  "P4_Développeur_reconversion_expertise": {
+    desc: "Dév junior/senior/confirmé, reconversion, connaît règles UX Baymard et UI, bénévole.",
+    instructions: "Analyse l'UI en mobilisant tes connaissances des règles Baymard et UI, selon ton profil mixte reconversion et niveaux d'expérience. Cite tes références."
+  },
+  "P5_Développeur_senior_homme": {
+    desc: "Dév. senior, homme, >10 ans XP, mentor bénévolat.",
+    instructions: "Donne ton avis basé sur ta longue expérience, en comparant l'UI/UX à des projets similaires pro. Cite des standards ou best practices utilisées en entreprise."
+  },
+  "P6_Développeur_confirmé_femme": {
+    desc: "Dév. confirmé, femme, 3-7 ans XP, bénévole pour progresser en UI/UX.",
+    instructions: "Exprime ton ressenti sur la simplicité et l'apport UX de l'UI, en t'appuyant sur quelques règles et sur ton expérience pratique."
+  },
+  "P7_Développeur_junior_femme_reconversion": {
+    desc: "Dév. junior, femme, <2 ans XP, Master, alternance, reconversion, bénévole.",
+    instructions: "Réponds sur l'accessibilité de l'UI et la prise en main facile, en te référant à tes expériences en alternance ou recommandations vues sur Behance."
+  },
+  "P8_Développeur_junior_homme_BTS": {
+    desc: "Dév. junior, homme, <2 ans XP, BTS sans alternance, bénévole.",
+    instructions: "Donne ton sentiment sur l'UI en te focalisant sur la lisibilité et la simplicité, style BTS débutant, sans expertise approfondie mais curieux."
+  }
+};
+
+let questions = [];
+// Fonction supprimée car l'image principale n'existe plus
+
+function showQuestionImagePreview(qId, event) {
+  const imgPreview = document.getElementById(qId + '_preview');
+  imgPreview.src = URL.createObjectURL(event.target.files[0]);
+  imgPreview.style.display = 'block';
+}
+
+function addQuestion() {
+  const questionsArea = document.getElementById('questionsArea');
+  const qId = "q" + (questions.length + 1);
+  const zone = document.createElement('div');
+  zone.className = "question-zone";
+  zone.id = qId;
+  
+  // Déterminer si c'est la première question
+  const isFirstQuestion = questions.length === 0;
+  const questionNumber = questions.length + 1;
+  
+  zone.innerHTML = `
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+      <h4 style="margin: 0; color: #F6A316;">
+        ${isFirstQuestion ? '🎯 Première Question' : `Question ${questionNumber}`}
+      </h4>
+      <button class="remove-btn" onclick="removeQuestion('${qId}')">Supprimer</button>
+    </div>
+    
+    ${isFirstQuestion ? `
+    <div style="background: #0D2D45; padding: 10px; border-radius: 5px; margin-bottom: 15px; border-left: 3px solid #F6A316;">
+      <p style="margin: 0; color: #F6A316; font-size: 0.9em;">
+        💡 Cette est votre première question. Uploadez une image UI et posez votre question pour commencer l'analyse.
+      </p>
+    </div>
+    ` : ''}
+    
+    <label>${isFirstQuestion ? 'Image UI à analyser :' : 'Image UI pour cette question (optionnel) :'}</label>
+    <input type="file" id="${qId}_img" accept="image/*" onchange="showQuestionImagePreview('${qId}', event)" style="margin-bottom: 10px;"/>
+    <img id="${qId}_preview" class="image-preview" style="display:none; max-width: 200px; margin-bottom: 15px;" />
+    
+    <label>Question :</label>
+    <input type="text" placeholder="${isFirstQuestion ? 'Ex: Que penses-tu de cette interface ?' : 'Votre question'}" id="${qId}_q"/>
+    
+    <label>Réponse :</label>
+    <textarea placeholder="Réponse manuelle ou générée par IA" id="${qId}_a" rows="4"></textarea>
+    
+    <div class="question-actions" style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
+      <button onclick="generateAIAnswerForQuestion('${qId}')" style="background: #F6A316; color: #071520; padding: 8px 12px; border: none; border-radius: 5px; cursor: pointer; font-size: 0.9em;">
+        🤖 Générer IA
+      </button>
+      <button onclick="saveAnswerForQuestion('${qId}')" style="background: #0D2D45; color: #F6A316; border: 1px solid #F6A316; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 0.9em;">
+        💾 Sauvegarder
+      </button>
+      <button onclick="clearAnswerForQuestion('${qId}')" style="background: #071520; color: #F6A316; border: 1px solid #F6A316; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 0.9em;">
+        🗑️ Effacer
+      </button>
+    </div>
+    
+    <div id="${qId}_status" class="question-status" style="margin-top: 10px; padding: 8px; border-radius: 5px; display: none;"></div>
+  `;
+  questionsArea.appendChild(zone);
+  questions.push(qId);
+  
+  // Masquer le bouton "Ajouter ma première question" après la première utilisation
+  if (isFirstQuestion) {
+    const firstQuestionButton = document.querySelector('button[onclick="addQuestion()"]');
+    if (firstQuestionButton) {
+      firstQuestionButton.parentElement.style.display = 'none';
+    }
+  }
+}
+
+function removeQuestion(qId) {
+  document.getElementById(qId).remove();
+  questions = questions.filter(q => q !== qId);
+  
+  // Si toutes les questions sont supprimées, restaurer le bouton "Ajouter ma première question"
+  if (questions.length === 0) {
+    const firstQuestionButton = document.querySelector('button[onclick="addQuestion()"]');
+    if (firstQuestionButton && firstQuestionButton.parentElement.style.display === 'none') {
+      firstQuestionButton.parentElement.style.display = 'block';
+    }
+  }
+}
+
+function saveAnswers() {
+  let results = [];
+  const user = document.getElementById('personaDropdown').value;
+  const dt = new Date();
+  const dateStr = dt.toLocaleDateString('fr-FR') + ' ' + dt.getHours().toString().padStart(2, '0') + ':' + dt.getMinutes().toString().padStart(2, '0');
+  
+  questions.forEach(qId => {
+    const question = document.getElementById(qId + "_q").value;
+    const reponse = document.getElementById(qId + "_a").value;
+    const questionImage = document.getElementById(qId + "_img").files[0];
+    const questionImageName = questionImage ? questionImage.name : '';
+    
+    if (question && reponse) { // Ne sauvegarder que si question ET réponse existent
+      results.push({
+        "Date": dateStr,
+        "Persona": user,
+        "Image_Question": questionImageName,
+        "Question": question,
+        "Réponse": reponse
+      });
+    }
+  });
+  
+  if (results.length > 0) {
+    localStorage.setItem("results", JSON.stringify(results));
+    document.getElementById('resultsDisplay').innerText = `${results.length} réponses enregistrées.`;
+    console.log('Réponses sauvegardées:', results);
+  } else {
+    document.getElementById('resultsDisplay').innerText = "Aucune réponse à sauvegarder.";
+  }
+}
+
+async function generateAIAnswers() {
+  const apiKey = document.getElementById('apiKey').value.trim();
+  const provider = document.getElementById('apiProvider').value;
+  
+  if (!apiKey) {
+    const providerNames = {
+      'mistral': 'Mistral',
+      'openai': 'OpenAI',
+      'gemini': 'Google Gemini',
+      'grok': 'Grok'
+    };
+    const providerName = providerNames[provider] || 'API';
+    alert(`Merci de saisir la clé API ${providerName}`);
+    return;
+  }
+  const user = document.getElementById('personaDropdown').value;
+  
+  // Afficher un indicateur de chargement
+  document.getElementById('resultsDisplay').innerText = "Génération des réponses en cours...";
+  
+  for (let qId of questions) {
+    const questionText = document.getElementById(qId + "_q").value;
+    if (!questionText) continue;
+    
+    const persona = personas[user];
+    let prompt = `Persona : ${persona.desc}\nInstructions : ${persona.instructions}\nQuestion utilisateur : ${questionText}`;
+    
+    // Note: L'image principale a été supprimée, chaque question a sa propre image
+    
+    // Ajouter l'image spécifique à la question si elle existe
+    const questionImage = document.getElementById(qId + "_img").files[0];
+    if (questionImage) {
+      prompt += `\n\nImage UI spécifique à cette question : Une interface utilisateur spécifique a été fournie pour cette question particulière.`;
+    }
+    
+    try {
+      const apiEndpoints = {
+        'mistral': '/api/mistral',
+        'openai': '/api/openai',
+        'gemini': '/api/gemini',
+        'grok': '/api/grok'
+      };
+      const apiEndpoint = apiEndpoints[provider] || '/api/mistral';
+      
+      const defaultModels = {
+        'mistral': 'mistral-small-latest',
+        'openai': 'gpt-3.5-turbo',
+        'gemini': 'gemini-pro',
+        'grok': 'grok-beta'
+      };
+      const model = defaultModels[provider] || 'mistral-small-latest';
+      
+      const response = await fetch(apiEndpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          apiKey: apiKey,
+          prompt: prompt,
+          model: model
+        }),
+      });
+      const data = await response.json();
+      console.log('Réponse reçue pour question', qId, ':', data);
+      
+      if (data.success) {
+        document.getElementById(qId + "_a").value = data.response;
+      } else {
+        const errorMsg = data.error || "Erreur inconnue";
+        console.error('Erreur API:', errorMsg, data.details);
+        document.getElementById(qId + "_a").value = "Erreur: " + errorMsg;
+      }
+    } catch (e) {
+      console.error('Erreur de connexion:', e);
+      document.getElementById(qId + "_a").value = "Erreur de connexion à l'API: " + e.message;
+    }
+  }
+  document.getElementById('resultsDisplay').innerText = "Réponses générées via IA.";
+}
+
+async function exportResults() {
+  try {
+    let data = JSON.parse(localStorage.getItem("results") || "[]");
+    console.log('Données à exporter:', data);
+    console.log('Nombre total de données:', data.length);
+    
+    if (data.length == 0) { 
+      document.getElementById('resultsDisplay').innerText = "❌ Aucune donnée à exporter. Sauvegardez d'abord vos réponses.";
+      return; 
+    }
+    
+    document.getElementById('resultsDisplay').innerText = "⏳ Préparation de l'export avec images...";
+    
+    // Créer un nouveau workbook
+    const wb = XLSX.utils.book_new();
+    
+    // Créer un worksheet avec les données structurées
+    const wsData = [];
+    const images = [];
+    let currentRow = 0;
+    
+    // Ajouter l'en-tête
+    wsData.push(['Question', 'Date', 'Persona', 'Image', 'Contenu', '', '']);
+    
+    for (let i = 0; i < data.length; i++) {
+      const item = data[i];
+      console.log(`Traitement item ${i + 1}/${data.length}:`, item);
+      
+      // Ajouter les métadonnées
+      wsData.push([
+        `Question ${i + 1}`,
+        item.Date,
+        item.Persona,
+        item.Image_Question || 'Aucune',
+        '',
+        '',
+        ''
+      ]);
+      
+      // Ajouter l'image de question si elle existe
+      if (item.Image_Question_Base64 && item.Image_Question_Base64.length > 0) {
+        console.log(`Image trouvée pour question ${i + 1}:`, item.Image_Question);
+        console.log(`Taille base64: ${item.Image_Question_Base64.length} caractères`);
+        
+        try {
+          // Convertir le base64 en format compatible SheetJS
+          const imageData = item.Image_Question_Base64.replace(/^data:image\/[a-z]+;base64,/, '');
+          console.log(`Image nettoyée, nouvelle taille: ${imageData.length} caractères`);
+          
+          // Essayer différents formats d'image
+          const imageObj = {
+            name: item.Image_Question,
+            data: imageData,
+            position: { r: currentRow + 1, c: 6 }, // Colonne G
+            opts: { 
+              base64: true, 
+              width: 200, 
+              height: 150,
+              type: 'image' // Spécifier le type
+            }
+          };
+          
+          images.push(imageObj);
+          console.log(`Image ajoutée à la liste des images à exporter`);
+        } catch (error) {
+          console.error(`Erreur lors du traitement de l'image pour question ${i + 1}:`, error);
+        }
+      }
+      
+      // Ajouter la question
+      wsData.push(['Question:', '', '', '', item.Question, '', '']);
+      
+      // Ajouter la réponse
+      wsData.push(['Réponse:', '', '', '', item.Réponse, '', '']);
+      
+      // Ajouter une ligne vide entre les questions
+      if (i < data.length - 1) {
+        wsData.push(['', '', '', '', '', '', '']);
+      }
+      
+      currentRow += 4; // Question + métadonnées + réponse + ligne vide
+    }
+    
+    // Créer le worksheet
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    
+    // Ajuster la largeur des colonnes
+    ws['!cols'] = [
+      { wch: 15 }, // A - Labels
+      { wch: 50 }, // B - Contenu principal
+      { wch: 20 }, // C - Date
+      { wch: 25 }, // D - Persona
+      { wch: 30 }, // E - Image principale
+      { wch: 35 }, // F - Image principale (affichage)
+      { wch: 35 }  // G - Image question (affichage)
+    ];
+    
+    // Ajuster la hauteur des lignes pour les réponses
+    ws['!rows'] = [];
+    for (let i = 0; i < wsData.length; i++) {
+      if (wsData[i] && wsData[i][0] === 'Réponse:') {
+        ws['!rows'][i] = { hpt: 120 }; // Hauteur pour les réponses
+      } else if (wsData[i] && wsData[i][0] && wsData[i][0].startsWith('Question ')) {
+        ws['!rows'][i] = { hpt: 160 }; // Hauteur pour les lignes avec images
+      } else {
+        ws['!rows'][i] = { hpt: 20 }; // Hauteur normale
+      }
+    }
+    
+    // Ajouter les images au worksheet
+    console.log(`Nombre total d'images à ajouter: ${images.length}`);
+    if (images.length > 0) {
+      ws['!images'] = images;
+      console.log('Images ajoutées au worksheet:', images);
+    } else {
+      console.log('Aucune image à ajouter au worksheet');
+    }
+    
+    // Ajouter le worksheet au workbook
+    XLSX.utils.book_append_sheet(wb, ws, "Réponses_IA");
+    
+    // Générer le nom de fichier
+    const dt = new Date();
+    const fname = `GOT_AgentIA_${dt.getFullYear()}${(dt.getMonth() + 1).toString().padStart(2, '0')}${dt.getDate().toString().padStart(2, '0')}_${dt.getHours().toString().padStart(2, '0')}${dt.getMinutes().toString().padStart(2, '0')}.xlsx`;
+    
+    // Exporter le fichier
+    XLSX.writeFile(wb, fname);
+    
+    document.getElementById('resultsDisplay').innerText = `✅ Fichier exporté: ${fname} (${data.length} réponses avec ${images.length} images intégrées)`;
+    console.log('Export réussi:', fname, 'avec', images.length, 'images');
+    console.log('Détails des images exportées:', images);
+    
+  } catch (error) {
+    console.error('Erreur lors de l\'export:', error);
+    document.getElementById('resultsDisplay').innerText = `❌ Erreur lors de l'export: ${error.message}`;
+  }
+}
+
+function viewSavedData() {
+  try {
+    let data = JSON.parse(localStorage.getItem("results") || "[]");
+    console.log('Données sauvegardées:', data);
+    console.log('Nombre total de données sauvegardées:', data.length);
+    
+    if (data.length == 0) {
+      document.getElementById('resultsDisplay').innerText = "📋 Aucune donnée sauvegardée.";
+      return;
+    }
+    
+    let displayText = `📋 ${data.length} réponses sauvegardées:\n\n`;
+    data.forEach((item, index) => {
+      displayText += `${index + 1}. [${item.Date}] ${item.Persona}\n`;
+      if (item.Image_Question) {
+        const hasImage = item.Image_Question_Base64 && item.Image_Question_Base64.length > 0 ? '✅' : '❌';
+        displayText += `   🖼️ Image: ${item.Image_Question} ${hasImage}\n`;
+        if (item.Image_Question_Base64) {
+          displayText += `   📏 Taille base64: ${item.Image_Question_Base64.length} caractères\n`;
+        }
+      }
+      displayText += `   Q: ${item.Question}\n`;
+      displayText += `   R: ${item.Réponse.substring(0, 100)}${item.Réponse.length > 100 ? '...' : ''}\n\n`;
+    });
+    
+    document.getElementById('resultsDisplay').innerText = displayText;
+  } catch (error) {
+    console.error('Erreur lors de l\'affichage:', error);
+    document.getElementById('resultsDisplay').innerText = `❌ Erreur: ${error.message}`;
+  }
+}
+
+// Nouvelles fonctions pour les actions par question
+async function generateAIAnswerForQuestion(qId) {
+  const apiKey = document.getElementById('apiKey').value.trim();
+  const provider = document.getElementById('apiProvider').value;
+  
+  if (!apiKey) {
+    const providerNames = {
+      'mistral': 'Mistral',
+      'openai': 'OpenAI',
+      'gemini': 'Google Gemini',
+      'grok': 'Grok'
+    };
+    const providerName = providerNames[provider] || 'API';
+    showQuestionStatus(qId, `❌ Merci de saisir la clé API ${providerName}`, 'error');
+    return;
+  }
+  
+  const questionText = document.getElementById(qId + "_q").value;
+  if (!questionText) {
+    showQuestionStatus(qId, '❌ Veuillez saisir une question', 'error');
+    return;
+  }
+  
+  const user = document.getElementById('personaDropdown').value;
+  showQuestionStatus(qId, '⏳ Génération en cours...', 'loading');
+  
+  const persona = personas[user];
+  let prompt = `Persona : ${persona.desc}\nInstructions : ${persona.instructions}\nQuestion utilisateur : ${questionText}`;
+  
+  // Ajouter l'image spécifique à la question si elle existe
+  const questionImage = document.getElementById(qId + "_img").files[0];
+  if (questionImage) {
+    prompt += `\n\nImage UI spécifique à cette question : Une interface utilisateur spécifique a été fournie pour cette question particulière.`;
+  }
+  
+  try {
+    const apiEndpoints = {
+      'mistral': '/api/mistral',
+      'openai': '/api/openai',
+      'gemini': '/api/gemini',
+      'grok': '/api/grok'
+    };
+    const apiEndpoint = apiEndpoints[provider] || '/api/mistral';
+    
+    const defaultModels = {
+      'mistral': 'mistral-small-latest',
+      'openai': 'gpt-3.5-turbo',
+      'gemini': 'gemini-pro',
+      'grok': 'grok-beta'
+    };
+    const model = defaultModels[provider] || 'mistral-small-latest';
+    
+    const response = await fetch(apiEndpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        apiKey: apiKey,
+        prompt: prompt,
+        model: model
+      }),
+    });
+    const data = await response.json();
+    console.log('Réponse reçue pour question', qId, ':', data);
+    
+    if (data.success) {
+      document.getElementById(qId + "_a").value = data.response;
+      showQuestionStatus(qId, '✅ Réponse générée avec succès', 'success');
+    } else {
+      const errorMsg = data.error || "Erreur inconnue";
+      console.error('Erreur API:', errorMsg, data.details);
+      showQuestionStatus(qId, `❌ Erreur: ${errorMsg}`, 'error');
+    }
+  } catch (e) {
+    console.error('Erreur de connexion:', e);
+    showQuestionStatus(qId, `❌ Erreur de connexion: ${e.message}`, 'error');
+  }
+}
+
+async function saveAnswerForQuestion(qId) {
+  const question = document.getElementById(qId + "_q").value;
+  const reponse = document.getElementById(qId + "_a").value;
+  
+  if (!question || !reponse) {
+    showQuestionStatus(qId, '❌ Question et réponse requises', 'error');
+    return;
+  }
+  
+  try {
+    // Récupérer les données existantes
+    let existingData = JSON.parse(localStorage.getItem("results") || "[]");
+    
+    const user = document.getElementById('personaDropdown').value;
+    const dt = new Date();
+    const dateStr = dt.toLocaleDateString('fr-FR') + ' ' + dt.getHours().toString().padStart(2, '0') + ':' + dt.getMinutes().toString().padStart(2, '0');
+    
+    // Note: L'image principale a été supprimée, chaque question a sa propre image
+    
+    // Vérifier s'il y a une image pour cette question
+    const questionImage = document.getElementById(qId + "_img").files[0];
+    const questionImageName = questionImage ? questionImage.name : '';
+    let questionImageBase64 = '';
+    if (questionImage) {
+      try {
+        questionImageBase64 = await imageToBase64(questionImage);
+      } catch (error) {
+        console.error('Erreur conversion image question:', error);
+      }
+    }
+    
+    const newEntry = {
+      "Date": dateStr,
+      "Persona": user,
+      "Image_Question": questionImageName,
+      "Image_Question_Base64": questionImageBase64,
+      "Question": question,
+      "Réponse": reponse
+    };
+    
+    existingData.push(newEntry);
+    localStorage.setItem("results", JSON.stringify(existingData));
+    
+    showQuestionStatus(qId, '✅ Réponse sauvegardée avec images', 'success');
+    console.log('Réponse sauvegardée pour question', qId, ':', newEntry);
+  } catch (error) {
+    console.error('Erreur lors de la sauvegarde:', error);
+    showQuestionStatus(qId, `❌ Erreur de sauvegarde: ${error.message}`, 'error');
+  }
+}
+
+function clearAnswerForQuestion(qId) {
+  document.getElementById(qId + "_q").value = '';
+  document.getElementById(qId + "_a").value = '';
+  document.getElementById(qId + "_img").value = '';
+  document.getElementById(qId + "_preview").style.display = 'none';
+  showQuestionStatus(qId, '🗑️ Question effacée', 'info');
+}
+
+function showQuestionStatus(qId, message, type) {
+  const statusDiv = document.getElementById(qId + "_status");
+  statusDiv.style.display = 'block';
+  statusDiv.innerText = message;
+  
+  // Appliquer le style selon le type
+  statusDiv.className = 'question-status';
+  switch(type) {
+    case 'success':
+      statusDiv.style.background = '#e8f5e8';
+      statusDiv.style.color = '#2e7d32';
+      statusDiv.style.border = '1px solid #4caf50';
+      break;
+    case 'error':
+      statusDiv.style.background = '#ffebee';
+      statusDiv.style.color = '#c62828';
+      statusDiv.style.border = '1px solid #f44336';
+      break;
+    case 'loading':
+      statusDiv.style.background = '#fff3e0';
+      statusDiv.style.color = '#ef6c00';
+      statusDiv.style.border = '1px solid #ff9800';
+      break;
+    case 'info':
+      statusDiv.style.background = '#e3f2fd';
+      statusDiv.style.color = '#1565c0';
+      statusDiv.style.border = '1px solid #2196f3';
+      break;
+  }
+  
+  // Masquer le statut après 3 secondes pour les succès et infos
+  if (type === 'success' || type === 'info') {
+    setTimeout(() => {
+      statusDiv.style.display = 'none';
+    }, 3000);
+  }
+}
+
+// Fonction pour convertir une image en base64
+function imageToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result;
+      console.log('Image convertie en base64, taille:', result.length);
+      console.log('Format de l\'image:', result.substring(0, 50) + '...');
+      resolve(result);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// Fonction pour récupérer les images sauvegardées
+async function getSavedImages() {
+  const savedImages = {};
+  
+  // Récupérer les images des questions
+  for (let qId of questions) {
+    const questionImageFile = document.getElementById(qId + "_img").files[0];
+    if (questionImageFile) {
+      try {
+        const base64 = await imageToBase64(questionImageFile);
+        savedImages[qId] = {
+          name: questionImageFile.name,
+          data: base64
+        };
+      } catch (error) {
+        console.error('Erreur conversion image question', qId, ':', error);
+      }
+    }
+  }
+  
+  return savedImages;
+}
+
+// Fonctions pour les actions globales
+async function generateAllAIAnswers() {
+  const apiKey = document.getElementById('apiKey').value.trim();
+  if (!apiKey) {
+    document.getElementById('resultsDisplay').innerText = '❌ Merci de saisir la clé API Mistral';
+    return;
+  }
+  
+  if (questions.length === 0) {
+    document.getElementById('resultsDisplay').innerText = '❌ Aucune question à traiter';
+    return;
+  }
+  
+  document.getElementById('resultsDisplay').innerText = '⏳ Génération de toutes les réponses en cours...';
+  
+  for (let qId of questions) {
+    const questionText = document.getElementById(qId + "_q").value;
+    if (questionText) {
+      await generateAIAnswerForQuestion(qId);
+      // Petite pause entre les requêtes
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+  }
+  
+  document.getElementById('resultsDisplay').innerText = '✅ Génération terminée pour toutes les questions';
+}
+
+function saveAllAnswers() {
+  if (questions.length === 0) {
+    document.getElementById('resultsDisplay').innerText = '❌ Aucune question à sauvegarder';
+    return;
+  }
+  
+  let savedCount = 0;
+  for (let qId of questions) {
+    const question = document.getElementById(qId + "_q").value;
+    const reponse = document.getElementById(qId + "_a").value;
+    
+    if (question && reponse) {
+      saveAnswerForQuestion(qId);
+      savedCount++;
+    }
+  }
+  
+  if (savedCount > 0) {
+    document.getElementById('resultsDisplay').innerText = `✅ ${savedCount} réponses sauvegardées`;
+  } else {
+    document.getElementById('resultsDisplay').innerText = '❌ Aucune réponse complète à sauvegarder';
+  }
+}
+</script>
+</body>
+</html> 

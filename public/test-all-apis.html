@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Toutes les APIs IA</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+    .container { max-width: 1000px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+    .provider-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 8px; }
+    .provider-section h3 { margin-top: 0; color: #333; }
+    .free-badge { background: #28a745; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; margin-left: 10px; }
+    .paid-badge { background: #dc3545; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; margin-left: 10px; }
+    input, button, textarea { padding: 10px; margin: 5px; border: 1px solid #ddd; border-radius: 4px; }
+    input, textarea { width: 100%; box-sizing: border-box; }
+    button { background: #007bff; color: white; cursor: pointer; width: auto; }
+    button:hover { background: #0056b3; }
+    button:disabled { background: #6c757d; cursor: not-allowed; }
+    .result { margin-top: 20px; padding: 15px; border-radius: 4px; }
+    .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+    pre { background: #f8f9fa; padding: 10px; border-radius: 4px; overflow-x: auto; font-size: 0.9em; }
+    .loading { opacity: 0.6; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧪 Test Toutes les APIs IA</h1>
+    
+    <div class="info">
+      <h3>ℹ️ Informations importantes :</h3>
+      <ul>
+        <li><strong>Mistral AI</strong> : Gratuit avec crédits généreux</li>
+        <li><strong>OpenAI GPT</strong> : Gratuit avec $5 de crédits pour nouveaux comptes</li>
+        <li><strong>Google Gemini</strong> : Gratuit avec quotas généreux</li>
+        <li><strong>Grok (xAI)</strong> : Payant uniquement</li>
+      </ul>
+    </div>
+    
+    <div>
+      <label for="testPrompt">Prompt de test :</label>
+      <textarea id="testPrompt" rows="3" placeholder="Entrez votre prompt de test">Bonjour, peux-tu me dire bonjour en français et me donner un conseil pour améliorer une interface utilisateur ?</textarea>
+    </div>
+    
+    <!-- Mistral AI -->
+    <div class="provider-section">
+      <h3>🤖 Mistral AI <span class="free-badge">GRATUIT</span></h3>
+      <input type="text" id="mistralKey" placeholder="Clé API Mistral" />
+      <button onclick="testProvider('mistral')" id="mistralBtn">Tester Mistral</button>
+      <div id="mistralResult"></div>
+    </div>
+    
+    <!-- OpenAI -->
+    <div class="provider-section">
+      <h3>🧠 OpenAI GPT <span class="free-badge">GRATUIT ($5)</span></h3>
+      <input type="text" id="openaiKey" placeholder="Clé API OpenAI (sk-...)" />
+      <button onclick="testProvider('openai')" id="openaiBtn">Tester OpenAI</button>
+      <div id="openaiResult"></div>
+    </div>
+    
+    <!-- Google Gemini -->
+    <div class="provider-section">
+      <h3>💎 Google Gemini <span class="free-badge">GRATUIT</span></h3>
+      <input type="text" id="geminiKey" placeholder="Clé API Google Gemini" />
+      <button onclick="testProvider('gemini')" id="geminiBtn">Tester Gemini</button>
+      <div id="geminiResult"></div>
+    </div>
+    
+    <!-- Grok -->
+    <div class="provider-section">
+      <h3>⚡ Grok (xAI) <span class="paid-badge">PAYANT</span></h3>
+      <input type="text" id="grokKey" placeholder="Clé API Grok (xai-...)" />
+      <button onclick="testProvider('grok')" id="grokBtn">Tester Grok</button>
+      <div id="grokResult"></div>
+    </div>
+    
+    <div class="info">
+      <h3>🔗 Liens pour obtenir les clés API :</h3>
+      <ul>
+        <li><strong>Mistral</strong> : <a href="https://console.mistral.ai/" target="_blank">https://console.mistral.ai/</a></li>
+        <li><strong>OpenAI</strong> : <a href="https://platform.openai.com/api-keys" target="_blank">https://platform.openai.com/api-keys</a></li>
+        <li><strong>Gemini</strong> : <a href="https://makersuite.google.com/app/apikey" target="_blank">https://makersuite.google.com/app/apikey</a></li>
+        <li><strong>Grok</strong> : <a href="https://console.x.ai/" target="_blank">https://console.x.ai/</a></li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    async function testProvider(provider) {
+      const apiKey = document.getElementById(provider + 'Key').value.trim();
+      const prompt = document.getElementById('testPrompt').value.trim();
+      const resultDiv = document.getElementById(provider + 'Result');
+      const button = document.getElementById(provider + 'Btn');
+      
+      if (!apiKey) {
+        resultDiv.innerHTML = '<div class="result error">❌ Veuillez entrer votre clé API</div>';
+        return;
+      }
+      
+      if (!prompt) {
+        resultDiv.innerHTML = '<div class="result error">❌ Veuillez entrer un prompt de test</div>';
+        return;
+      }
+      
+      button.disabled = true;
+      button.textContent = 'Test en cours...';
+      resultDiv.innerHTML = '<div class="result">🔄 Test en cours...</div>';
+      
+      try {
+        const response = await fetch(`/api/${provider}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            apiKey: apiKey,
+            prompt: prompt
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          resultDiv.innerHTML = `
+            <div class="result success">
+              <h4>✅ ${provider.toUpperCase()} fonctionne !</h4>
+              <p><strong>Réponse :</strong></p>
+              <p>${data.response}</p>
+            </div>
+          `;
+        } else {
+          resultDiv.innerHTML = `
+            <div class="result error">
+              <h4>❌ Erreur ${provider.toUpperCase()}</h4>
+              <p><strong>Message :</strong> ${data.error}</p>
+              ${data.details ? `<pre>${JSON.stringify(data.details, null, 2)}</pre>` : ''}
+            </div>
+          `;
+        }
+      } catch (error) {
+        resultDiv.innerHTML = `
+          <div class="result error">
+            <h4>❌ Erreur de connexion</h4>
+            <p>${error.message}</p>
+          </div>
+        `;
+      } finally {
+        button.disabled = false;
+        button.textContent = `Tester ${provider.charAt(0).toUpperCase() + provider.slice(1)}`;
+      }
+    }
+    
+    // Test automatique de tous les providers si les clés sont présentes
+    function testAllProviders() {
+      const providers = ['mistral', 'openai', 'gemini', 'grok'];
+      providers.forEach(provider => {
+        const apiKey = document.getElementById(provider + 'Key').value.trim();
+        if (apiKey) {
+          setTimeout(() => testProvider(provider), Math.random() * 1000);
+        }
+      });
+    }
+    
+    // Ajouter un bouton pour tester tous les providers
+    document.addEventListener('DOMContentLoaded', function() {
+      const testAllBtn = document.createElement('button');
+      testAllBtn.textContent = '🚀 Tester toutes les APIs disponibles';
+      testAllBtn.style.margin = '20px 0';
+      testAllBtn.style.background = '#28a745';
+      testAllBtn.onclick = testAllProviders;
+      document.querySelector('.container').appendChild(testAllBtn);
+    });
+  </script>
+</body>
+</html>
+

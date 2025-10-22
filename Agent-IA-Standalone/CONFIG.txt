@@ -1,0 +1,32 @@
+# Configuration Agent IA Standalone
+
+## APIs recommandées (gratuites) :
+
+### OpenAI (Recommandé)
+- URL: https://platform.openai.com/api-keys
+- Crédits: $5 gratuits pour nouveaux comptes
+- Format clé: sk-...
+
+### Google Gemini
+- URL: https://makersuite.google.com/app/apikey
+- Crédits: Quotas gratuits généreux
+- Format clé: alphanumérique
+
+### Mistral AI
+- URL: https://console.mistral.ai/
+- Crédits: Crédits gratuits généreux
+- Format clé: alphanumérique
+
+## Instructions d'utilisation :
+1. Ouvrez index.html dans votre navigateur
+2. Cliquez sur "Lancer l'Agent IA"
+3. Sélectionnez un persona
+4. Choisissez une API (OpenAI recommandé)
+5. Entrez votre clé API
+6. Commencez à analyser vos interfaces !
+
+## Support :
+- Aucune installation requise
+- Fonctionne sur tous les navigateurs
+- Compatible mobile et desktop
+- Données sauvegardées localement

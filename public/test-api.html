@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test API Mistral</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #071520; color: #F6A316; }
+        .container { max-width: 600px; margin: 0 auto; }
+        input, button, textarea { width: 100%; margin: 10px 0; padding: 10px; background: #0D2D45; border: 1px solid #F6A316; color: #F6A316; border-radius: 5px; }
+        button { background: #F6A316; color: #071520; font-weight: bold; cursor: pointer; }
+        .result { padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .error { background: #ffebee; color: #c62828; }
+        .success { background: #e8f5e8; color: #2e7d32; }
+        .loading { background: #f0f0f0; color: #333; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test API Mistral</h1>
+        
+        <label for="apiKey">Clé API Mistral:</label>
+        <input type="text" id="apiKey" placeholder="Entrez votre clé API">
+        
+        <label for="model">Modèle:</label>
+        <select id="model">
+            <option value="mistral-small-latest">Mistral Small (recommandé)</option>
+            <option value="mistral-medium-latest">Mistral Medium</option>
+            <option value="mistral-large-latest">Mistral Large</option>
+        </select>
+        
+        <label for="prompt">Prompt de test:</label>
+        <textarea id="prompt" rows="4" placeholder="Entrez un prompt de test">Dis-moi bonjour en français et présente-toi brièvement</textarea>
+        
+        <button onclick="testAPI()">🚀 Tester l'API</button>
+        
+        <div id="result" class="result" style="display: none;"></div>
+    </div>
+
+    <script>
+        async function testAPI() {
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const prompt = document.getElementById('prompt').value.trim();
+            const model = document.getElementById('model').value;
+            const resultDiv = document.getElementById('result');
+            
+            if (!apiKey || !prompt) {
+                alert('Veuillez remplir tous les champs');
+                return;
+            }
+            
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result loading';
+            resultDiv.innerHTML = '⏳ Test en cours...';
+            
+            try {
+                console.log('Envoi de la requête avec le modèle:', model);
+                const response = await fetch('/api/mistral', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        apiKey: apiKey,
+                        prompt: prompt,
+                        model: model
+                    })
+                });
+                
+                console.log('Réponse reçue, status:', response.status);
+                const data = await response.json();
+                console.log('Données reçues:', data);
+                
+                if (data.success) {
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = `<strong>✅ Succès!</strong><br><strong>Modèle utilisé:</strong> ${model}<br><strong>Réponse:</strong><br>${data.response}`;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.innerHTML = `<strong>❌ Erreur:</strong> ${data.error}<br><strong>Détails:</strong> ${JSON.stringify(data.details)}`;
+                }
+            } catch (error) {
+                console.error('Erreur:', error);
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `<strong>❌ Erreur de connexion:</strong> ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html> 
